@@ -1,17 +1,25 @@
 services:
-  node-exporter:
-    image: prom/node-exporter:v1.9.0
+
+  alloy:
+    image: grafana/alloy:v1.19.2
     restart: unless-stopped
+    ports:
+      - "12345:12345"
     volumes:
+      - ./monitoring/alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
-      - /:/rootfs:ro
+      - /:/host/root:ro
+      #- /:/host/root:ro,rslave
     networks:
       - observability-net
     command:
-      - '--path.procfs=/host/proc'
-      - '--path.sysfs=/host/sys'
-      - '--path.rootfs=/rootfs'
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - /etc/alloy/config.alloy
+    pid: host
+    user: "0:0"
 
   prometheus:
     image: prom/prometheus:v3.14.0
@@ -26,6 +34,17 @@ services:
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
       - "--storage.tsdb.path=/prometheus"
+      - '--web.enable-remote-write-receiver'
+
+  loki:
+    image: grafana/loki:3.6.17
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/loki/loki-config.yml:/etc/loki/loki-config.yml:ro
+      - loki_data:/tmp/loki
+    networks:
+      - observability-net
+    command: -config.file=/etc/loki/loki-config.yml
 
   grafana:
     image: grafana/grafana:10.1.0
@@ -34,6 +53,7 @@ services:
     ports:
       - "3001:3000"
     volumes:
+      - ./monitoring/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
       - ./monitoring/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
       - grafana_data:/var/lib/grafana
     environment:
@@ -45,6 +65,7 @@ services:
 volumes:
   prometheus_data:
   grafana_data:
+  loki_data:
 
 networks:
   observability-net:

@@ -1,5 +1,6 @@
 # Laboratorio Observabilidad
 
+- Grafana Alloy
 - Prometheus
-- Node Exporter
+- Loki
 - Grafana
